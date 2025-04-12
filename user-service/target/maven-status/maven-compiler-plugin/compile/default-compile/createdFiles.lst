@@ -1,0 +1,4 @@
+com\sougata\userservice\UserServiceApplication.class
+com\sougata\userservice\logic\UserSummarySupplierLogic.class
+com\sougata\userservice\logic\UserAuditLogger.class
+com\sougata\userservice\logic\UserCreatorLogic.class

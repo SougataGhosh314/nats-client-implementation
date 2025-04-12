@@ -1,0 +1,58 @@
+package com.sougata.natscore.dispatcher;
+
+import com.sougata.natscore.config.EventComponentConfig;
+import com.sougata.natscore.config.EventComponentEntry;
+import com.sougata.natscore.config.TopicBinding;
+import com.sougata.natscore.contract.PayloadFunction;
+import com.sougata.natscore.model.PayloadHeader;
+import com.sougata.natscore.model.PayloadWrapper;
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.impl.Headers;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+public class FunctionDispatcher {
+    private final Connection connection;
+    private final Map<String, String> writeTopicMap;
+
+    public FunctionDispatcher(Connection connection, EventComponentConfig config) {
+        this.connection = connection;
+        this.writeTopicMap = new HashMap<>();
+
+        for (EventComponentEntry entry : config.getComponents()) {
+            if ("function".equals(entry.getType())) {
+                for (TopicBinding binding : entry.getWriteTopics()) {
+                    writeTopicMap.put(binding.getMessageType(), binding.getTopicName());
+                }
+            }
+        }
+    }
+
+    public void register(List<TopicBinding> topics, PayloadFunction handler) {
+        for (TopicBinding binding : topics) {
+            Dispatcher dispatcher = connection.createDispatcher(msg -> {
+                PayloadWrapper<byte[]> input = new PayloadWrapper<>(msg.getData(), binding.getMessageType());
+                PayloadWrapper<byte[]> result = handler.process(input);
+                if (result != null && msg.getReplyTo() != null) {
+                    String payloadType = result.getHeader(PayloadHeader.PAYLOAD_TYPE);
+                    String targetTopic = writeTopicMap.get(payloadType);
+                    if (targetTopic != null) {
+                        connection.publish(targetTopic, toHeaders(result), result.getPayload());
+                    }
+                }
+            });
+            dispatcher.subscribe(binding.getTopicName());
+        }
+    }
+
+    private Headers toHeaders(PayloadWrapper<byte[]> wrapper) {
+        Headers headers = new Headers();
+        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.name(), v));
+        return headers;
+    }
+}

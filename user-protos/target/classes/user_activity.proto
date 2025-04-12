@@ -1,0 +1,10 @@
+syntax = "proto3";
+package com.sougata.userprotos;
+
+option java_multiple_files = true;
+
+message UserActivity {
+  string sessionId = 1;
+  string activityType = 2;
+  string performedAt = 3;
+}

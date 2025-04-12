@@ -1,0 +1,48 @@
+{
+  "components": [
+    {
+      "type": "function",
+      "readTopics": [
+        {
+          "topicName": "user.create",
+          "messageType": "com.sougata.protos.UserRequest"
+        },
+        {
+          "topicName": "user.update",
+          "messageType": "com.sougata.protos.UserRequest"
+        }
+      ],
+      "writeTopics": [
+        {
+          "topicName": "user.response",
+          "messageType": "com.sougata.protos.UserResponse"
+        }
+      ],
+      "handlerClass": "com.sougata.userservice.logic.UserCreatorLogic"
+    },
+    {
+      "type": "consumer",
+      "readTopics": [
+        {
+          "topicName": "user.audit",
+          "messageType": "com.sougata.protos.UserEvent"
+        },
+        {
+          "topicName": "user.activity",
+          "messageType": "com.sougata.protos.UserActivity"
+        }
+      ],
+      "handlerClass": "com.sougata.userservice.logic.UserAuditLogger"
+    },
+    {
+      "type": "supplier",
+      "writeTopics": [
+        {
+          "topicName": "user.summary",
+          "messageType": "com.sougata.protos.UserSummary"
+        }
+      ],
+      "handlerClass": "com.sougata.userservice.logic.UserSummarySupplierLogic"
+    }
+  ]
+}
