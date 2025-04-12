@@ -1,9 +1,0 @@
-nats:
-  url: nats://localhost:4222
-  processorId: user-service-1
-
-spring:
-  config:
-    import: optional:classpath:event-config.json
-
-

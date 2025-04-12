@@ -1,9 +1,0 @@
-syntax = "proto3";
-package com.sougata.userprotos;
-
-option java_multiple_files = true;
-
-message UserResponse {
-  string processorId = 1;
-  map<string, string> body = 2;
-}

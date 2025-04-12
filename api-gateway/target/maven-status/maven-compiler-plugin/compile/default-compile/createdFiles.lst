@@ -1,4 +1,0 @@
-com\sougata\nats\ApiGatewayApplication.class
-com\sougata\nats\config\NatsGatewayConfig.class
-com\sougata\nats\controller\UserProxyController.class
-com\sougata\nats\util\NatsUtil.class
