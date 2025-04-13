@@ -2,15 +2,22 @@ package com.sougata.natscore.dispatcher;
 
 import com.sougata.natscore.config.TopicBinding;
 import com.sougata.natscore.contract.PayloadConsumer;
+import com.sougata.natscore.enums.MDCLoggingEnum;
 import com.sougata.natscore.model.PayloadHeader;
 import com.sougata.natscore.model.PayloadWrapper;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.impl.Headers;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static com.sougata.natscore.util.NatsUtil.headersToMap;
+
+@Slf4j
 @Component
 public class ConsumerDispatcher {
     private final Connection connection;
@@ -28,12 +35,27 @@ public class ConsumerDispatcher {
                         .setCorrelationId(msg.getHeaders().getFirst(PayloadHeader.CORRELATION_ID.getKey()))
                         .setCreationTimestamp(msg.getHeaders().getFirst(PayloadHeader.CREATION_TS.getKey()))
                         .build();
-                handler.consume(incoming);
+
+                MDC.put(MDCLoggingEnum.CORRELATION_ID.getLoggingKey(), msg.getHeaders().getFirst(PayloadHeader.CORRELATION_ID.getKey()));
+                logIncomingMessage(binding.getTopicName(), msg.getHeaders());
+
+                try {
+                    handler.consume(incoming);
+                } catch (Exception e) {
+                    log.error("Error while consuming message: ", e);
+                } finally {
+                    MDC.remove(MDCLoggingEnum.CORRELATION_ID.getLoggingKey()); // ✅ safer than MDC.clear()
+                }
             });
 
             if (StringUtils.isEmpty(binding.getQueueGroup()))
                 dispatcher.subscribe(binding.getTopicName());
             else dispatcher.subscribe(binding.getTopicName(), binding.getQueueGroup());
         }
+    }
+
+    private static void logIncomingMessage(String topicName, Headers headers) {
+        log.debug("Received message on topic: {}", topicName);
+        log.trace("Message headers: {}", headersToMap(headers));
     }
 }

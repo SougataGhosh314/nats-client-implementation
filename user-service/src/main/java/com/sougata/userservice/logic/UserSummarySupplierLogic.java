@@ -17,12 +17,12 @@ public class UserSummarySupplierLogic implements PayloadSupplier {
         new Thread(() -> {
             while (true) {
                 try {
+                    Thread.sleep(99999999);
                     UserSummary userSummary = UserSummary.newBuilder()
                             .setSummary("This is a user summary")
                             .setGeneratedAt(System.currentTimeMillis())
                             .build();
                     eventQueue.put(userSummary);
-                    Thread.sleep(99999999);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
