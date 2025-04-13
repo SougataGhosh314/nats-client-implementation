@@ -9,6 +9,7 @@ import com.sougata.natscore.model.PayloadWrapper;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.impl.Headers;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -36,9 +37,14 @@ public class FunctionDispatcher {
     public void register(List<TopicBinding> topics, PayloadFunction handler) {
         for (TopicBinding binding : topics) {
             Dispatcher dispatcher = connection.createDispatcher(msg -> {
-                PayloadWrapper<byte[]> input = new PayloadWrapper<>(msg.getData(), binding.getMessageType());
+                PayloadWrapper<byte[]> input = PayloadWrapper.<byte[]>newBuilder()
+                        .setPayload(msg.getData())
+                        .setPayloadType(binding.getMessageType())
+                        .setCorrelationId(msg.getHeaders().getFirst(PayloadHeader.CORRELATION_ID.getKey()))
+                        .setCreationTimestamp(msg.getHeaders().getFirst(PayloadHeader.CREATION_TS.getKey()))
+                        .build();
                 PayloadWrapper<byte[]> result = handler.process(input);
-                if (result != null && msg.getReplyTo() != null) {
+                if (result != null) {
                     String payloadType = result.getHeader(PayloadHeader.PAYLOAD_TYPE);
                     String targetTopic = writeTopicMap.get(payloadType);
                     if (targetTopic != null) {
@@ -46,13 +52,16 @@ public class FunctionDispatcher {
                     }
                 }
             });
-            dispatcher.subscribe(binding.getTopicName());
+
+            if (StringUtils.isEmpty(binding.getQueueGroup()))
+                dispatcher.subscribe(binding.getTopicName());
+            else dispatcher.subscribe(binding.getTopicName(), binding.getQueueGroup());
         }
     }
 
     private Headers toHeaders(PayloadWrapper<byte[]> wrapper) {
         Headers headers = new Headers();
-        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.name(), v));
+        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.getKey(), v));
         return headers;
     }
 }

@@ -2,71 +2,95 @@ package com.sougata.natscore.model;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public class PayloadWrapper<T> {
+    private final T payload;
+    private final Map<PayloadHeader, String> payloadHeaders;
 
-    private T payload;
-    private Map<PayloadHeader, String> payloadHeaders;
-
-    public PayloadWrapper(T payload, String payloadType) {
+    private PayloadWrapper(T payload, Map<PayloadHeader, String> payloadHeaders) {
         this.payload = payload;
-        this.payloadHeaders = new EnumMap<>(PayloadHeader.class);
-        payloadHeaders.put(PayloadHeader.PAYLOAD_TYPE, payloadType);
-        payloadHeaders.put(PayloadHeader.CORRELATION_ID, UUID.randomUUID().toString());
-        payloadHeaders.put(PayloadHeader.CREATION_TS, String.valueOf(System.currentTimeMillis()));
+        this.payloadHeaders = payloadHeaders;
     }
 
     public T getPayload() {
-        return payload;
-    }
-
-    public void setPayload(T payload) {
-        this.payload = payload;
+        return this.payload;
     }
 
     public Map<PayloadHeader, String> getPayloadHeaders() {
-        return payloadHeaders;
-    }
-
-    public void setPayloadHeaders(Map<PayloadHeader, String> payloadHeaders) {
-        this.payloadHeaders = payloadHeaders;
+        return this.payloadHeaders;
     }
 
     public String getHeader(PayloadHeader header) {
         return this.payloadHeaders.get(header);
     }
 
-    public void setHeader(PayloadHeader header, String value) {
-        this.payloadHeaders.put(header, value);
+    public static <T> Builder<T> newBuilder() {
+        return new Builder<>();
     }
 
-    public boolean hasMandatoryHeaders() {
-        return payloadHeaders.containsKey(PayloadHeader.PAYLOAD_TYPE) &&
-                payloadHeaders.containsKey(PayloadHeader.CORRELATION_ID) &&
-                payloadHeaders.containsKey(PayloadHeader.CREATION_TS);
+    public Builder<T> toBuilder() {
+        return new Builder<>(this);
     }
 
-    @Override
-    public String toString() {
-        return "PayloadWrapper{" +
-                "payload=" + payload +
-                ", payloadHeaders=" + payloadHeaders +
-                '}';
-    }
+    public static class Builder<T> {
+        private static final Set<PayloadHeader> STRICTLY_REQUIRED_HEADERS = Set.of(
+                PayloadHeader.PAYLOAD_TYPE
+        );
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        PayloadWrapper<?> that = (PayloadWrapper<?>) o;
-        return Objects.equals(payload, that.payload) &&
-                Objects.equals(payloadHeaders, that.payloadHeaders);
-    }
+        private T payload;
+        private final Map<PayloadHeader, String> headers = new EnumMap<>(PayloadHeader.class);
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(payload, payloadHeaders);
+        public Builder() {}
+
+        public Builder(PayloadWrapper<T> wrapper) {
+            this.payload = wrapper.payload;
+            this.headers.putAll(wrapper.payloadHeaders);
+        }
+
+        public Builder<T> setPayload(T payload) {
+            this.payload = payload;
+            return this;
+        }
+
+        public Builder<T> setPayloadType(String payloadType) {
+            headers.put(PayloadHeader.PAYLOAD_TYPE, payloadType);
+            return this;
+        }
+
+        public Builder<T> setCorrelationId(String correlationId) {
+            headers.put(PayloadHeader.CORRELATION_ID, correlationId);
+            return this;
+        }
+
+        public Builder<T> setCreationTimestamp(String creationTs) {
+            headers.put(PayloadHeader.CREATION_TS, creationTs);
+            return this;
+        }
+
+        public Builder<T> addHeader(PayloadHeader key, String value) {
+            headers.put(key, value);
+            return this;
+        }
+
+        public PayloadWrapper<T> build() {
+            if (payload == null) {
+                throw new IllegalStateException("Payload must be set.");
+            }
+
+            // Validate strictly required headers
+            for (PayloadHeader required : STRICTLY_REQUIRED_HEADERS) {
+                if (headers.get(required) == null || headers.get(required).isBlank()) {
+                    throw new IllegalStateException("Missing required header: " + required.name());
+                }
+            }
+
+            // Auto-fill optional-but-required headers
+            headers.putIfAbsent(PayloadHeader.CORRELATION_ID, UUID.randomUUID().toString());
+            headers.putIfAbsent(PayloadHeader.CREATION_TS, String.valueOf(System.currentTimeMillis()));
+
+            return new PayloadWrapper<>(payload, new EnumMap<>(headers));
+        }
     }
 }

@@ -25,7 +25,10 @@ public class UserCreatorLogic implements PayloadFunction {
                     ))
                     .build();
 
-            return new PayloadWrapper<>(response.toByteArray(), "com.sougata.protos.UserResponse");
+            return request.toBuilder()
+                    .setPayload(response.toByteArray())
+                    .setPayloadType(UserResponse.class.getName())
+                    .build();
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to process user creation request", e);

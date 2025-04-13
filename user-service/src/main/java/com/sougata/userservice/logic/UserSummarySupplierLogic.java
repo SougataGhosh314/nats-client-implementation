@@ -2,25 +2,27 @@ package com.sougata.userservice.logic;
 
 import com.sougata.natscore.contract.PayloadSupplier;
 import com.sougata.natscore.model.PayloadWrapper;
+import com.sougata.userprotos.UserSummary;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 @Component
 public class UserSummarySupplierLogic implements PayloadSupplier {
 
-    private final BlockingQueue<String> eventQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<UserSummary> eventQueue = new LinkedBlockingQueue<>();
 
     public UserSummarySupplierLogic() {
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(7200000);
-                    String summary = "Summary at " + Instant.now();
-                    eventQueue.put(summary);
+                    UserSummary userSummary = UserSummary.newBuilder()
+                            .setSummary("This is a user summary")
+                            .setGeneratedAt(System.currentTimeMillis())
+                            .build();
+                    eventQueue.put(userSummary);
+                    Thread.sleep(99999999);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -31,8 +33,11 @@ public class UserSummarySupplierLogic implements PayloadSupplier {
     @Override
     public PayloadWrapper<byte[]> supply() {
         try {
-            String data = eventQueue.take();
-            return new PayloadWrapper<>(data.getBytes(StandardCharsets.UTF_8), "com.sougata.protos.UserSummary");
+            UserSummary userSummary = eventQueue.take();
+            return PayloadWrapper.<byte[]>newBuilder()
+                    .setPayload(userSummary.toByteArray())
+                    .setPayloadType(UserSummary.class.getName())
+                    .build();
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while waiting for summary event", e);
         }

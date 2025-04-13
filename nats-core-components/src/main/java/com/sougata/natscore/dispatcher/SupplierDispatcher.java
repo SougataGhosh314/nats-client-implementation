@@ -52,7 +52,7 @@ public class SupplierDispatcher {
 
     private Headers toHeaders(PayloadWrapper<byte[]> wrapper) {
         Headers headers = new Headers();
-        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.name(), v));
+        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.getKey(), v));
         return headers;
     }
 }

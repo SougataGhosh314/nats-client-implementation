@@ -5,17 +5,19 @@
       "readTopics": [
         {
           "topicName": "user.create",
-          "messageType": "com.sougata.protos.UserRequest"
+          "messageType": "com.sougata.userprotos.UserRequest",
+          "queueGroup": "user-creator-workers"
         },
         {
           "topicName": "user.update",
-          "messageType": "com.sougata.protos.UserRequest"
+          "messageType": "com.sougata.userprotos.UserRequest",
+          "queueGroup": "user-creator-workers"
         }
       ],
       "writeTopics": [
         {
           "topicName": "user.response",
-          "messageType": "com.sougata.protos.UserResponse"
+          "messageType": "com.sougata.userprotos.UserResponse"
         }
       ],
       "handlerClass": "com.sougata.userservice.logic.UserCreatorLogic"
@@ -25,11 +27,13 @@
       "readTopics": [
         {
           "topicName": "user.audit",
-          "messageType": "com.sougata.protos.UserEvent"
+          "messageType": "com.sougata.userprotos.UserEvent",
+          "queueGroup": "user-audit-workers"
         },
         {
           "topicName": "user.activity",
-          "messageType": "com.sougata.protos.UserActivity"
+          "messageType": "com.sougata.userprotos.UserActivity",
+          "queueGroup": "user-audit-workers"
         }
       ],
       "handlerClass": "com.sougata.userservice.logic.UserAuditLogger"
@@ -39,7 +43,7 @@
       "writeTopics": [
         {
           "topicName": "user.summary",
-          "messageType": "com.sougata.protos.UserSummary"
+          "messageType": "com.sougata.userprotos.UserSummary"
         }
       ],
       "handlerClass": "com.sougata.userservice.logic.UserSummarySupplierLogic"
