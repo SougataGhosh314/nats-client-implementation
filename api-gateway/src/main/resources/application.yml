@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   application:
@@ -7,10 +7,3 @@ spring:
 
 nats:
   url: nats://localhost:4222
-
-user:
-  topics:
-    create: user.create         # Function entry point for user creation
-    response: user.response     # Function's reply target topic
-    audit: user.audit           # Consumer topic for user events
-    activity: user.activity     # Consumer topic for user activities

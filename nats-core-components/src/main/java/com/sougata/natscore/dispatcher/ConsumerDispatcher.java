@@ -5,6 +5,7 @@ import com.sougata.natscore.contract.PayloadConsumer;
 import com.sougata.natscore.enums.MDCLoggingEnum;
 import com.sougata.natscore.model.PayloadHeader;
 import com.sougata.natscore.model.PayloadWrapper;
+import com.sougata.natscore.monitoring.NatsMetricsRecorder;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.impl.Headers;
@@ -21,9 +22,11 @@ import static com.sougata.natscore.util.NatsUtil.headersToMap;
 @Component
 public class ConsumerDispatcher {
     private final Connection connection;
+    private final NatsMetricsRecorder metricsRecorder;
 
-    public ConsumerDispatcher(Connection connection) {
+    public ConsumerDispatcher(Connection connection, NatsMetricsRecorder metricsRecorder) {
         this.connection = connection;
+        this.metricsRecorder = metricsRecorder;
     }
 
     public void register(List<TopicBinding> topics, PayloadConsumer handler) {
@@ -38,11 +41,13 @@ public class ConsumerDispatcher {
 
                 MDC.put(MDCLoggingEnum.CORRELATION_ID.getLoggingKey(), msg.getHeaders().getFirst(PayloadHeader.CORRELATION_ID.getKey()));
                 logIncomingMessage(binding.getTopicName(), msg.getHeaders());
+                metricsRecorder.incrementReceived(binding.getTopicName()); // record metrics
 
                 try {
                     handler.consume(incoming);
                 } catch (Exception e) {
                     log.error("Error while consuming message: ", e);
+                    metricsRecorder.incrementError(binding.getTopicName());
                 } finally {
                     MDC.remove(MDCLoggingEnum.CORRELATION_ID.getLoggingKey()); // ✅ safer than MDC.clear()
                 }

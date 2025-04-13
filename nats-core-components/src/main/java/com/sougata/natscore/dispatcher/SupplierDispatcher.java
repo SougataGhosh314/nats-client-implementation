@@ -7,6 +7,7 @@ import com.sougata.natscore.contract.PayloadSupplier;
 import com.sougata.natscore.enums.MDCLoggingEnum;
 import com.sougata.natscore.model.PayloadHeader;
 import com.sougata.natscore.model.PayloadWrapper;
+import com.sougata.natscore.monitoring.NatsMetricsRecorder;
 import io.nats.client.Connection;
 import io.nats.client.impl.Headers;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +23,12 @@ import static com.sougata.natscore.util.NatsUtil.headersToMap;
 @Component
 public class SupplierDispatcher {
     private final Connection connection;
+    private final NatsMetricsRecorder metricsRecorder;
     private final Map<String, String> writeTopicMap;
 
-    public SupplierDispatcher(Connection connection, EventComponentConfig config) {
+    public SupplierDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
         this.connection = connection;
+        this.metricsRecorder = metricsRecorder;
         this.writeTopicMap = new HashMap<>();
 
         for (EventComponentEntry entry : config.getComponents()) {
@@ -47,8 +50,9 @@ public class SupplierDispatcher {
                         String targetTopic = writeTopicMap.get(payloadType);
                         if (targetTopic != null) {
                             MDC.put(MDCLoggingEnum.CORRELATION_ID.getLoggingKey(), payload.getHeader(PayloadHeader.CORRELATION_ID));
-                            logOutgoingMessage(targetTopic, toHeaders(payload));
+                            logOutgoingMessage(targetTopic, toHeaders(payload)); //log outgoing message
                             connection.publish(targetTopic, toHeaders(payload), payload.getPayload());
+                            metricsRecorder.incrementSent(targetTopic); // record metrics
                         }
                     }
                 } catch (Exception e) {

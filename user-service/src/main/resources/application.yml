@@ -1,9 +1,12 @@
 server.port: 8080
 management:
-  endpoints.web.exposure.include: health,info
+  endpoints.web.exposure.include: '*'
   endpoint:
     health:
       show-details: always
+  metrics:
+    enable:
+      all: true
 
 nats:
   url: nats://localhost:4222

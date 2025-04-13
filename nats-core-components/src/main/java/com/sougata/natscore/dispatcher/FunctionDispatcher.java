@@ -7,6 +7,7 @@ import com.sougata.natscore.contract.PayloadFunction;
 import com.sougata.natscore.enums.MDCLoggingEnum;
 import com.sougata.natscore.model.PayloadHeader;
 import com.sougata.natscore.model.PayloadWrapper;
+import com.sougata.natscore.monitoring.NatsMetricsRecorder;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.impl.Headers;
@@ -25,10 +26,12 @@ import static com.sougata.natscore.util.NatsUtil.headersToMap;
 @Component
 public class FunctionDispatcher {
     private final Connection connection;
+    private final NatsMetricsRecorder metricsRecorder;
     private final Map<String, String> writeTopicMap;
 
-    public FunctionDispatcher(Connection connection, EventComponentConfig config) {
+    public FunctionDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
         this.connection = connection;
+        this.metricsRecorder = metricsRecorder;
         this.writeTopicMap = new HashMap<>();
 
         for (EventComponentEntry entry : config.getComponents()) {
@@ -52,6 +55,8 @@ public class FunctionDispatcher {
 
                 MDC.put(MDCLoggingEnum.CORRELATION_ID.getLoggingKey(), msg.getHeaders().getFirst(PayloadHeader.CORRELATION_ID.getKey()));
                 logIncomingMessage(binding.getTopicName(), msg.getHeaders());
+                metricsRecorder.incrementReceived(binding.getTopicName()); // record metrics
+
                 try {
                     PayloadWrapper<byte[]> result = handler.process(input);
                     if (result != null) {
@@ -60,10 +65,12 @@ public class FunctionDispatcher {
                         if (targetTopic != null) {
                             logOutgoingMessage(targetTopic, toHeaders(result));
                             connection.publish(targetTopic, toHeaders(result), result.getPayload());
+                            metricsRecorder.incrementSent(targetTopic); // record metrics
                         }
                     }
                 } catch (Exception e) {
                     log.error("Error while processing message: ", e);
+                    metricsRecorder.incrementError(binding.getTopicName());
                 } finally {
                     MDC.remove(MDCLoggingEnum.CORRELATION_ID.getLoggingKey()); // ✅ safer than MDC.clear()
                 }
