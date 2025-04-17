@@ -2,7 +2,7 @@ package com.sougata.natscore.dispatcher;
 
 import com.sougata.natscore.config.EventComponentConfig;
 import com.sougata.natscore.config.TopicBinding;
-import com.sougata.natscore.contract.PayloadFunction;
+import com.sougata.natscore.contract.PayloadFunctionFanout;
 import com.sougata.natscore.enums.HandlerType;
 import com.sougata.natscore.model.PayloadWrapper;
 import com.sougata.natscore.monitoring.NatsMetricsRecorder;
@@ -11,36 +11,43 @@ import io.nats.client.Dispatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.util.HashMap;
 import java.util.List;
 
 @Slf4j
 @Component
-public class FunctionDispatcher extends AbstractDispatcher {
+public class FunctionFanoutDispatcher extends AbstractDispatcher {
 
-    public FunctionDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
+    public FunctionFanoutDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
         super(connection, metricsRecorder);
         this.writeTopicMap = new HashMap<>();
 
         config.getComponents().stream()
-                .filter(entry -> HandlerType.FUNCTION.equals(entry.getHandlerType()))
+                .filter(entry -> HandlerType.FUNCTION_FANOUT.equals(entry.getHandlerType()))
                 .flatMap(entry -> entry.getWriteTopics().stream())
                 .forEach(binding -> writeTopicMap.put(binding.getMessageType(), binding.getTopicName()));
     }
 
-    public void register(List<TopicBinding> topics, PayloadFunction handler) {
+    public void register(List<TopicBinding> topics, PayloadFunctionFanout handler) {
         for (TopicBinding binding : topics) {
             Dispatcher dispatcher = connection.createDispatcher(msg -> {
                 PayloadWrapper<byte[]> input = extractAndLogIncomingMessage(binding.getMessageType(), binding.getTopicName(), msg);
-                PayloadWrapper<byte[]> result = null;
+                List<PayloadWrapper<byte[]>> payloadWrappers = null;
                 try {
-                    result = handler.process(input);
+                    payloadWrappers = handler.process(input);
+                    if (CollectionUtils.isEmpty(payloadWrappers)) {
+                        log.info("FunctionFanout: {} returned no payloads. Nothing to dispatch.", handler.getClass().getName());
+                        return;
+                    }
                 } catch (Exception e) {
                     log.error("Error while processing message: ", e);
                     metricsRecorder.incrementError(binding.getTopicName());
                 }
-                if (result != null) publish(result);
+                for (PayloadWrapper<byte[]> payloadWrapper : payloadWrappers) {
+                    publish(payloadWrapper);
+                }
             });
 
             if (StringUtils.isEmpty(binding.getQueueGroup()))

@@ -1,7 +1,7 @@
 {
   "components": [
     {
-      "type": "function",
+      "type": "FUNCTION",
       "readTopics": [
         {
           "topicName": "user.create",
@@ -23,7 +23,7 @@
       "handlerClass": "com.sougata.userservice.logic.UserCreatorLogic"
     },
     {
-      "type": "consumer",
+      "type": "CONSUMER",
       "readTopics": [
         {
           "topicName": "user.audit",
@@ -39,7 +39,7 @@
       "handlerClass": "com.sougata.userservice.logic.UserAuditLogger"
     },
     {
-      "type": "supplier",
+      "type": "SUPPLIER",
       "writeTopics": [
         {
           "topicName": "user.summary",

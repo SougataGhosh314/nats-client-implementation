@@ -4,74 +4,40 @@ import com.sougata.natscore.config.EventComponentConfig;
 import com.sougata.natscore.config.EventComponentEntry;
 import com.sougata.natscore.config.TopicBinding;
 import com.sougata.natscore.contract.PayloadSupplier;
-import com.sougata.natscore.enums.MDCLoggingEnum;
-import com.sougata.natscore.model.PayloadHeader;
+import com.sougata.natscore.enums.HandlerType;
 import com.sougata.natscore.model.PayloadWrapper;
 import com.sougata.natscore.monitoring.NatsMetricsRecorder;
 import io.nats.client.Connection;
-import io.nats.client.impl.Headers;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.Map;
-
-import static com.sougata.natscore.util.NatsUtil.headersToMap;
 
 @Slf4j
 @Component
-public class SupplierDispatcher {
-    private final Connection connection;
-    private final NatsMetricsRecorder metricsRecorder;
-    private final Map<String, String> writeTopicMap;
+public class SupplierDispatcher extends AbstractDispatcher {
 
     public SupplierDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
-        this.connection = connection;
-        this.metricsRecorder = metricsRecorder;
+        super(connection, metricsRecorder);
         this.writeTopicMap = new HashMap<>();
 
-        for (EventComponentEntry entry : config.getComponents()) {
-            if ("supplier".equals(entry.getType())) {
-                for (TopicBinding binding : entry.getWriteTopics()) {
-                    writeTopicMap.put(binding.getMessageType(), binding.getTopicName());
-                }
-            }
-        }
+        config.getComponents().stream()
+                .filter(entry -> HandlerType.SUPPLIER.equals(entry.getHandlerType()))
+                .flatMap(entry -> entry.getWriteTopics().stream())
+                .forEach(binding -> writeTopicMap.put(binding.getMessageType(), binding.getTopicName()));
     }
 
     public void register(PayloadSupplier supplier) {
         new Thread(() -> {
             while (true) {
+                PayloadWrapper<byte[]> payload = null;
                 try {
-                    PayloadWrapper<byte[]> payload = supplier.supply();
-                    if (payload != null) {
-                        String payloadType = payload.getHeader(PayloadHeader.PAYLOAD_TYPE);
-                        String targetTopic = writeTopicMap.get(payloadType);
-                        if (targetTopic != null) {
-                            MDC.put(MDCLoggingEnum.CORRELATION_ID.getLoggingKey(), payload.getHeader(PayloadHeader.CORRELATION_ID));
-                            logOutgoingMessage(targetTopic, toHeaders(payload)); //log outgoing message
-                            connection.publish(targetTopic, toHeaders(payload), payload.getPayload());
-                            metricsRecorder.incrementSent(targetTopic); // record metrics
-                        }
-                    }
+                    payload = supplier.supply();
                 } catch (Exception e) {
-                    log.error("Error while supplying message: ", e);
-                } finally {
-                    MDC.remove(MDCLoggingEnum.CORRELATION_ID.getLoggingKey()); // ✅ safer than MDC.clear()
+                    log.error("Error in PayloadSupplier: {}.supply(): ", supplier.getClass().getName(), e);
                 }
+                if (payload != null) publish(payload);
             }
         }).start();
-    }
-
-    private Headers toHeaders(PayloadWrapper<byte[]> wrapper) {
-        Headers headers = new Headers();
-        wrapper.getPayloadHeaders().forEach((k, v) -> headers.add(k.getKey(), v));
-        return headers;
-    }
-
-    private static void logOutgoingMessage(String topicName, Headers headers) {
-        log.debug("Sending message on topic: {}", topicName);
-        log.trace("Message headers: {}", headersToMap(headers));
     }
 }
