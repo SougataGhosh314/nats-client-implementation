@@ -13,6 +13,7 @@ nats:
   credsFile: "C:/nats-config/users/user-service.creds"
   supplier:
     thread-pool-size: 4
+  dev-mode: true
 
 spring:
   config:

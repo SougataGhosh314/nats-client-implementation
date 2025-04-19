@@ -23,23 +23,30 @@ import java.time.Duration;
 public class ConnectionConfig {
     private String url;
     private String credsFile;
+    private boolean devMode = false;
 
     @Bean(destroyMethod = "close")
     public Connection connection() throws Exception {
-        Options options = new Options.Builder()
-                .server(url) // Or whatever secure URL your server runs on
-                .authHandler(Nats.credentials(credsFile))
-                .sslContext(NatsSslUtils.createSslContext(
-                        "C:/nats-config/certs/ca.pem",
-                        null, // No client cert needed for one-way TLS
-                        null  // No client key needed for one-way TLS
-                ))
-                .connectionTimeout(Duration.ofSeconds(5))
-                .build();
+        Options.Builder builder = new Options.Builder()
+                .server(url)
+                .connectionTimeout(Duration.ofSeconds(5));
+
+        if (!devMode) {
+            log.info("NATS devMode=false → Secure connection (creds + TLS)");
+
+            builder.authHandler(Nats.credentials(credsFile));
+            builder.sslContext(NatsSslUtils.createSslContext(
+                    "C:/nats-config/certs/ca.pem",
+                    null, // No client cert needed for one-way TLS
+                    null  // No client key needed for one-way TLS
+            ));
+        } else {
+            log.warn("NATS devMode=true → Connecting without creds or TLS");
+        }
 
         Connection connection = null;
         try {
-            connection = Nats.connect(options);
+            connection = Nats.connect(builder.build());
         } catch (IOException | InterruptedException e) {
             log.error("Error establishing NATs connection: {}", ExceptionUtils.getStackTrace(e));
             throw new RuntimeException(e);

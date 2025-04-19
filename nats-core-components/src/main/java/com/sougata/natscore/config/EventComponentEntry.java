@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 public class EventComponentEntry {
-    private HandlerType handlerType; // function, consumer, supplier
+    private HandlerType handlerType;
     private List<TopicBinding> readTopics;
     private List<TopicBinding> writeTopics;
     private String handlerClass;
