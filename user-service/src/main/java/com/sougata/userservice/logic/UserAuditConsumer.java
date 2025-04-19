@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Component
-public class UserAuditLogger implements PayloadConsumer {
+public class UserAuditConsumer implements PayloadConsumer {
 
     @Override
     public void consume(PayloadWrapper<byte[]> message) {

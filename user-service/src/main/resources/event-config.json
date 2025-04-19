@@ -1,7 +1,9 @@
 {
   "components": [
     {
-      "type": "FUNCTION",
+      "handlerType": "FUNCTION",
+      "handlerClass": "com.sougata.userservice.logic.UserCreatorFunction",
+      "disabled": true,
       "readTopics": [
         {
           "topicName": "user.create",
@@ -19,11 +21,33 @@
           "topicName": "user.response",
           "messageType": "com.sougata.userprotos.UserResponse"
         }
-      ],
-      "handlerClass": "com.sougata.userservice.logic.UserCreatorLogic"
+      ]
     },
     {
-      "type": "CONSUMER",
+      "handlerType": "FUNCTION_FANOUT",
+      "handlerClass": "com.sougata.userservice.logic.UserCreatorFunctionFanout",
+      "readTopics": [
+        {
+          "topicName": "user.create",
+          "messageType": "com.sougata.userprotos.UserRequest",
+          "queueGroup": "user-creator-workers"
+        },
+        {
+          "topicName": "user.update",
+          "messageType": "com.sougata.userprotos.UserRequest",
+          "queueGroup": "user-creator-workers"
+        }
+      ],
+      "writeTopics": [
+        {
+          "topicName": "user.response",
+          "messageType": "com.sougata.userprotos.UserResponse"
+        }
+      ]
+    },
+    {
+      "handlerType": "CONSUMER",
+      "handlerClass": "com.sougata.userservice.logic.UserAuditConsumer",
       "readTopics": [
         {
           "topicName": "user.audit",
@@ -35,18 +59,29 @@
           "messageType": "com.sougata.userprotos.UserActivity",
           "queueGroup": "user-audit-workers"
         }
-      ],
-      "handlerClass": "com.sougata.userservice.logic.UserAuditLogger"
+      ]
     },
     {
-      "type": "SUPPLIER",
+      "handlerType": "SUPPLIER",
+      "handlerClass": "com.sougata.userservice.logic.UserSummarySupplier",
+      "disabled": true,
       "writeTopics": [
         {
           "topicName": "user.summary",
           "messageType": "com.sougata.userprotos.UserSummary"
         }
-      ],
-      "handlerClass": "com.sougata.userservice.logic.UserSummarySupplierLogic"
+      ]
+    },
+    {
+      "handlerType": "SUPPLIER_FANOUT",
+      "handlerClass": "com.sougata.userservice.logic.UserSummarySupplierFanout",
+      "disabled": true,
+      "writeTopics": [
+        {
+          "topicName": "user.summary",
+          "messageType": "com.sougata.userprotos.UserSummary"
+        }
+      ]
     }
   ]
 }

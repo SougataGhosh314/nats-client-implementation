@@ -6,14 +6,16 @@ import io.nats.client.Nats;
 import io.nats.client.Options;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 
+@Slf4j
 @Configuration
 @ConfigurationProperties(prefix = "nats")
 @Getter
@@ -35,6 +37,13 @@ public class ConnectionConfig {
                 .connectionTimeout(Duration.ofSeconds(5))
                 .build();
 
-        return Nats.connect(options);
+        Connection connection = null;
+        try {
+            connection = Nats.connect(options);
+        } catch (IOException | InterruptedException e) {
+            log.error("Error establishing NATs connection: {}", ExceptionUtils.getStackTrace(e));
+            throw new RuntimeException(e);
+        }
+        return connection;
     }
 }

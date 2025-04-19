@@ -5,19 +5,24 @@ import com.sougata.natscore.model.PayloadHeader;
 import com.sougata.natscore.model.PayloadWrapper;
 import com.sougata.natscore.monitoring.NatsMetricsRecorder;
 import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
 import io.nats.client.Message;
 import io.nats.client.impl.Headers;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.sougata.natscore.util.NatsUtil.headersToMap;
 
 @Slf4j
 public abstract class AbstractDispatcher {
-
+    protected final List<Dispatcher> dispatchers = new ArrayList<>();
     protected final Connection connection;
     protected final NatsMetricsRecorder metricsRecorder;
     protected Map<String, String> writeTopicMap = new HashMap<>();
@@ -75,5 +80,22 @@ public abstract class AbstractDispatcher {
     private void logOutgoingMessage(String topicName, Headers headers) {
         log.debug("Sending message on topic: {}", topicName);
         log.trace("Message headers: {}", headersToMap(headers));
+    }
+
+    protected void registerDispatcher(Dispatcher dispatcher) {
+        this.dispatchers.add(dispatcher);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        log.info("Shutting down {} dispatcher(s)...", dispatchers.size());
+        for (Dispatcher dispatcher : dispatchers) {
+            try {
+                dispatcher.drain(Duration.ofSeconds(2));
+                log.info("Drained dispatcher cleanly.");
+            } catch (Exception e) {
+                log.warn("Failed to drain dispatcher. Exception: {}", e.getMessage());
+            }
+        }
     }
 }

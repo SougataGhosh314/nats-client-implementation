@@ -11,4 +11,5 @@ public class EventComponentEntry {
     private List<TopicBinding> readTopics;
     private List<TopicBinding> writeTopics;
     private String handlerClass;
+    private boolean disabled;
 }

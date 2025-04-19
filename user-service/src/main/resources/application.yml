@@ -11,6 +11,8 @@ management:
 nats:
   url: nats://localhost:4222
   credsFile: "C:/nats-config/users/user-service.creds"
+  supplier:
+    thread-pool-size: 4
 
 spring:
   config:
@@ -19,6 +21,6 @@ spring:
 logging:
   level:
     org.springframework.boot:
-      logging: DEBUG
-      actuate: DEBUG
-    com.sougata.natscore: TRACE
+      logging: FATAL
+      actuate: FATAL
+    com.sougata.natscore: DEBUG

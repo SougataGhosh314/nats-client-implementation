@@ -10,6 +10,7 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -18,6 +19,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@DependsOn("connection")
 public class FunctionFanoutDispatcher extends AbstractDispatcher {
 
     public FunctionFanoutDispatcher(Connection connection, EventComponentConfig config, NatsMetricsRecorder metricsRecorder) {
@@ -53,6 +55,8 @@ public class FunctionFanoutDispatcher extends AbstractDispatcher {
             if (StringUtils.isEmpty(binding.getQueueGroup()))
                 dispatcher.subscribe(binding.getTopicName());
             else dispatcher.subscribe(binding.getTopicName(), binding.getQueueGroup());
+            registerDispatcher(dispatcher);
         }
+        log.info("Bean of type PayloadFunction: {} registered", handler.getClass().getName());
     }
 }

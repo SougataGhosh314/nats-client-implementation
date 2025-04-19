@@ -9,11 +9,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 @Component
-public class UserSummarySupplierLogic implements PayloadSupplier {
+public class UserSummarySupplier implements PayloadSupplier {
 
     private final BlockingQueue<UserSummary> eventQueue = new LinkedBlockingQueue<>();
 
-    public UserSummarySupplierLogic() {
+    public UserSummarySupplier() {
         new Thread(() -> {
             while (true) {
                 try {
